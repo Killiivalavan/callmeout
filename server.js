@@ -102,8 +102,11 @@ app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (requ
 		console.warn('Recieved webhook with invalid signature');
 		return response.status(401).send("Invalid Signature");		
 	};
-	console.log('Webhook Signature varified successfully');
+	console.log('Webhook Signature verified successfully');
 	const pushEvent = JSON.parse(request.body.toString());
+	console.log('--- RECEIVED GITHUB PAYLOAD ---');
+    console.log(JSON.stringify(pushEvent, null, 2));
+    console.log('--- END OF PAYLOAD ---');
 	const {data:pushData, error:userError} = await supabase
 		.from('users')
 		.select('id')
