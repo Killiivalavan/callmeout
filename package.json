@@ -1,0 +1,19 @@
+{
+  "name": "callmeout",
+  "version": "1.0.0",
+  "description": "a goal tracker",
+  "license": "ISC",
+  "author": "Killiivalavan",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run dev"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.89.0",
+    "axios": "^1.13.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-session": "^1.18.2"
+  }
+}

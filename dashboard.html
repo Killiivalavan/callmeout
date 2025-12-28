@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard</title>
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <h1>My Dashboard</h1>
+    <pre id="user-data-placeholder"></pre>
+	<div class="graph-grid">Git pushes</div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const userDataElement = document.getElementById('user-data-placeholder');
+			const graphGrid = document.querySelector('.graph-grid');
+
+            fetch('/api/me')
+                .then(response => {
+                    if (!response.ok) {
+                        // If not authenticated, redirect to the login page
+                        window.location.href = '/';
+                        throw new Error('Not authenticated');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Display the user data in the <pre> tag as formatted JSON
+                    userDataElement.textContent = JSON.stringify(data, null, 2);
+
+
+					const gitData = new Map();
+					for (const record of data.github_counter) {
+						gitData.set(record.date, record.push_counter);
+					};
+					const today = new Date();
+					for (let i = 0; i<365; i++) {
+						const dateString = today.toISOString().split('T')[0];
+						const count = gitData.get(dateString) || 0;
+						const square = document.createElement('div');
+						square.classList.add('sq');
+						let level = 0;
+						if (count > 0 && count <=2) {
+							level = 1;
+						} else if (count >2 && count <=5) {
+							level = 2;
+						} else if (count >5 && count <= 10) {
+							level = 3;
+						} else if (count > 10) {
+							level = 4;
+						}
+						square.classList.add(`level-${level}`);
+						graphGrid.appendChild(square);
+						today.setDate(today.getDate() - 1);
+					}
+
+                })
+                .catch(error => {
+                    // This catch block will handle the "Not authenticated" error gracefully
+                    console.error('Error fetching data:', error);
+                });
+        });
+    </script>
+</body>
+</html>

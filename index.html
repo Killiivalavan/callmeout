@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>callMeOut</title>
+		<link href="style.css" rel="stylesheet">
+	</head>
+	<body>
+		<h1>callMeOut</h1>
+		<h2>a simple but efficient goal tracker</h2>
+		<a id="github-login" href="#" class="disabled">Loading...</a>
+		<script>
+			window.addEventListener('DOMContentLoaded', () => {
+				const githubLogin = document.getElementById('github-login');
+
+				fetch('/config')
+					.then(response => response.json())
+					.then(config => {
+						const redirectUri = 'http://localhost:6900/callback';
+						const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${config.client_id}&redirect_uri=${redirectUri}`;
+						
+						githubLogin.href = authorizeUrl;
+						githubLogin.textContent = 'Connect to GitHub';
+						githubLogin.classList.remove('disabled');
+					})
+					.catch(error => {
+						console.error('Error fetching config:', error);
+						githubLogin.textContent = 'Could not load login link.';
+					});
+			});
+		</script>
+	</body>
+</html>
