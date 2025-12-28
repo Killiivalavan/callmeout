@@ -120,7 +120,7 @@ app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (requ
 		user_id_in: pushData.id
 	});
 	if (counterUpsertError) {
-			console.error('Unable to upsert data');
+			console.error('Unable to upsert data:', counterUpsertError);
 			return response.status(500).send("Data not updated")
 	}
 	else {
