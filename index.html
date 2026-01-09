@@ -33,8 +33,9 @@
 					})
 					.then(config => {
 						if (!config) return; // Already redirected
-						const redirectUri = 'http://localhost:6900/callback';
-						const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${config.client_id}&redirect_uri=${redirectUri}`;
+						// Use current hostname dynamically (works for localhost and production)
+						const redirectUri = `${window.location.origin}/callback`;
+						const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${config.client_id}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 						
 						githubLogin.href = authorizeUrl;
 						githubLogin.textContent = 'Connect to GitHub';
