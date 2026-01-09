@@ -15,9 +15,10 @@ app.use(session({
 	resave: false,
 	saveUninitialized: false
 }));
+app.use(express.json());
 
 app.get('/', (request, response) => {
-	response.send("Hello World");
+	response.sendFile(path.resolve('index.html'));
 });
 
 app.get('/callback', async (request,response) => {
@@ -130,6 +131,83 @@ app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (requ
 
 app.get('/config', (request,response) => {
 	response.json({client_id: process.env.GITHUB_CLIENT_ID});
+});
+
+app.post('/api/settings', async (request, response) => {
+	if (!request.session.userId) {
+		return response.status(401).json({"error": "401 Unauthorized"});
+	}
+
+	try {
+		const { push_goal, annoy_time, discord_webhook_url } = request.body;
+
+		// Validate push_goal
+		if (push_goal !== undefined) {
+			const goalNum = parseInt(push_goal, 10);
+			if (isNaN(goalNum) || goalNum < 1) {
+				return response.status(400).json({"error": "push_goal must be a positive integer"});
+			}
+		}
+
+		// Validate annoy_time format (HH:MM)
+		if (annoy_time !== undefined && annoy_time !== null && annoy_time !== '') {
+			const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+			if (!timeRegex.test(annoy_time)) {
+				return response.status(400).json({"error": "annoy_time must be in HH:MM format (24-hour)"});
+			}
+		}
+
+		// Validate discord_webhook_url (if provided, must be a valid URL)
+		if (discord_webhook_url !== undefined && discord_webhook_url !== null && discord_webhook_url !== '') {
+			try {
+				new URL(discord_webhook_url);
+			} catch (e) {
+				return response.status(400).json({"error": "discord_webhook_url must be a valid URL"});
+			}
+		}
+
+		// Build update object with only provided fields
+		const updateData = {};
+		if (push_goal !== undefined) {
+			updateData.push_goal = parseInt(push_goal, 10);
+		}
+		if (annoy_time !== undefined) {
+			updateData.annoy_time = annoy_time || null;
+		}
+		if (discord_webhook_url !== undefined) {
+			updateData.discord_webhook_url = discord_webhook_url || null;
+		}
+
+		// If no fields to update, return error
+		if (Object.keys(updateData).length === 0) {
+			return response.status(400).json({"error": "No valid fields to update"});
+		}
+
+		// Update user settings
+		const { data: updatedData, error: updateError } = await supabase
+			.from('users')
+			.update(updateData)
+			.eq('id', request.session.userId)
+			.select()
+			.single();
+
+		if (updateError) {
+			console.error('Error updating user settings:', updateError);
+			return response.status(500).json({"error": "Failed to update settings"});
+		}
+
+		response.json({
+			"message": "Settings updated successfully",
+			"data": {
+				push_goal: updatedData.push_goal,
+				annoy_time: updatedData.annoy_time,
+				discord_webhook_url: updatedData.discord_webhook_url
+			}
+		});
+	} catch (error) {
+		console.error('Error in settings endpoint:', error);
+		response.status(500).json({"error": "Internal server error"});
+	}
 });
 
 cron.schedule('*/5 * * * *', async () => {
