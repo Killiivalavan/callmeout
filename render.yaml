@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: callmeout
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITWEBHOOK_SECRET
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+      - key: VERCEL
+        value: "0"
