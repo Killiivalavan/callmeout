@@ -16,9 +16,23 @@
 			window.addEventListener('DOMContentLoaded', () => {
 				const githubLogin = document.getElementById('github-login');
 
-				fetch('/config')
-					.then(response => response.json())
+				// Check if user is already logged in
+				fetch('/api/me')
+					.then(response => {
+						if (response.ok) {
+							// User is logged in, redirect to dashboard
+							window.location.href = '/dashboard';
+							return;
+						}
+						// User is not logged in, show login button
+						return fetch('/config');
+					})
+					.then(response => {
+						if (!response) return; // Already redirected
+						return response.json();
+					})
 					.then(config => {
+						if (!config) return; // Already redirected
 						const redirectUri = 'http://localhost:6900/callback';
 						const authorizeUrl = `https://github.com/login/oauth/authorize?client_id=${config.client_id}&redirect_uri=${redirectUri}`;
 						

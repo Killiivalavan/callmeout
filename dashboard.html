@@ -18,6 +18,9 @@
 			<input type="url" id="discord-url">
 			<div id="settings-message" class="settings-message"></div>
 			<button id="save-goal-btn">Save</button>
+			<button id="test-webhook-btn" style="margin-top: 10px; background-color: #5865F2;">Test Discord Webhook</button>
+			<hr style="border: none; border-top: 1px solid rgba(255, 255, 255, 0.1); margin: 12px 0;">
+			<button id="signout-btn" class="signout-button">Sign Out</button>
         </div>
     </div>
 
@@ -164,6 +167,86 @@
 					saveBtn.textContent = 'Save';
 				}
 			})
+
+			// Test webhook button
+			const testWebhookBtn = document.getElementById('test-webhook-btn');
+			testWebhookBtn.addEventListener('click', async () => {
+				const messageElement = document.getElementById('settings-message');
+				
+				// Clear previous messages
+				messageElement.textContent = '';
+				messageElement.className = 'settings-message';
+
+				// Disable button during request
+				testWebhookBtn.disabled = true;
+				testWebhookBtn.textContent = 'Testing...';
+
+				try {
+					const response = await fetch('/api/test-webhook', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						}
+					});
+
+					// Check content type before parsing
+					const contentType = response.headers.get('content-type');
+					if (!contentType || !contentType.includes('application/json')) {
+						const text = await response.text();
+						throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+					}
+
+					const result = await response.json();
+
+					if (!response.ok) {
+						throw new Error(result.error || 'Failed to send test notification');
+					}
+
+					// Show success message
+					messageElement.textContent = result.message || 'Test notification sent! Check your Discord channel.';
+					messageElement.className = 'settings-message success';
+
+					// Clear message after 5 seconds
+					setTimeout(() => {
+						messageElement.textContent = '';
+						messageElement.className = 'settings-message';
+					}, 5000);
+
+				} catch (error) {
+					console.error('Error testing webhook:', error);
+					messageElement.textContent = error.message || 'Failed to send test notification. Please try again.';
+					messageElement.className = 'settings-message error';
+				} finally {
+					testWebhookBtn.disabled = false;
+					testWebhookBtn.textContent = 'Test Discord Webhook';
+				}
+			});
+
+			// Sign out button
+			const signoutBtn = document.getElementById('signout-btn');
+			signoutBtn.addEventListener('click', async () => {
+				try {
+					const response = await fetch('/api/signout', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						}
+					});
+
+					if (response.ok) {
+						// Redirect to home page after sign out
+						window.location.href = '/';
+					} else {
+						console.error('Failed to sign out');
+						// Still redirect even if there's an error
+						window.location.href = '/';
+					}
+				} catch (error) {
+					console.error('Error signing out:', error);
+					// Still redirect even if there's an error
+					window.location.href = '/';
+				}
+			});
 
         });
     </script>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Welcome to callMeOut - Setup</title>
+    <link href="style.css" rel="stylesheet">
+</head>
+<body>
+    <main class="glass-container onboarding-container">
+        <h1>Welcome to callMeOut! 🎉</h1>
+        <h2>Let's set up your push tracking preferences</h2>
+        
+        <form id="onboarding-form" class="onboarding-form">
+            <div class="form-group">
+                <label for="push-goal">Daily Push Goal:</label>
+                <p class="form-hint">How many git pushes do you want to make per day?</p>
+                <input 
+                    type="number" 
+                    id="push-goal" 
+                    name="push_goal" 
+                    min="1" 
+                    value="3" 
+                    required
+                    class="form-input"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="annoy-time">Reminder Time:</label>
+                <p class="form-hint">What time should we remind you if you haven't reached your goal? (24-hour format)</p>
+                <input 
+                    type="time" 
+                    id="annoy-time" 
+                    name="annoy_time" 
+                    required
+                    class="form-input"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="discord-webhook">Discord Webhook URL:</label>
+                <p class="form-hint">Where should we send your notifications? (Optional - you can add this later)</p>
+                <input 
+                    type="url" 
+                    id="discord-webhook" 
+                    name="discord_webhook_url" 
+                    placeholder="https://discord.com/api/webhooks/..."
+                    class="form-input"
+                >
+                <a href="https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks" target="_blank" class="help-link">
+                    How to get a Discord webhook URL?
+                </a>
+            </div>
+
+            <div id="onboarding-message" class="settings-message"></div>
+
+            <button type="submit" id="submit-btn" class="submit-button">
+                Complete Setup
+            </button>
+        </form>
+    </main>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('onboarding-form');
+            const submitBtn = document.getElementById('submit-btn');
+            const messageElement = document.getElementById('onboarding-message');
+
+            // Check if user is authenticated
+            fetch('/api/me')
+                .then(response => {
+                    if (!response.ok) {
+                        window.location.href = '/';
+                        throw new Error('Not authenticated');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Pre-fill form with existing values if any
+                    if (data.push_goal) {
+                        document.getElementById('push-goal').value = data.push_goal;
+                    }
+                    if (data.annoy_time) {
+                        document.getElementById('annoy-time').value = data.annoy_time;
+                    }
+                    if (data.discord_webhook_url) {
+                        document.getElementById('discord-webhook').value = data.discord_webhook_url;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching user data:', error);
+                });
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                // Clear previous messages
+                messageElement.textContent = '';
+                messageElement.className = 'settings-message';
+
+                // Disable submit button
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Setting up...';
+
+                const formData = {
+                    push_goal: parseInt(document.getElementById('push-goal').value, 10),
+                    annoy_time: document.getElementById('annoy-time').value,
+                    discord_webhook_url: document.getElementById('discord-webhook').value.trim() || null
+                };
+
+                try {
+                    const response = await fetch('/api/onboarding', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    // Check content type before parsing
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || 'Failed to save settings');
+                    }
+
+                    // Show success message
+                    messageElement.textContent = 'Setup complete! Redirecting to dashboard...';
+                    messageElement.className = 'settings-message success';
+
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+
+                } catch (error) {
+                    console.error('Error saving onboarding data:', error);
+                    messageElement.textContent = error.message || 'Failed to save settings. Please try again.';
+                    messageElement.className = 'settings-message error';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Complete Setup';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

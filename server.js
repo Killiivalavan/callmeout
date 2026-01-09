@@ -13,7 +13,14 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANO
 app.use(session({
 	secret: process.env.SESSION_SECRET,
 	resave: false,
-	saveUninitialized: false
+	saveUninitialized: false,
+	name: 'callmeout.sid', // Custom session cookie name
+	cookie: {
+		maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+		httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
+		secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
+		sameSite: 'lax' // CSRF protection
+	}
 }));
 
 // Webhook route must be defined BEFORE express.json() to get raw body
@@ -57,7 +64,12 @@ app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (requ
 app.use(express.json());
 
 app.get('/', (request, response) => {
-	response.sendFile(path.resolve('index.html'));
+	// If user is already logged in, redirect to dashboard
+	if (request.session.userId) {
+		response.redirect('/dashboard');
+	} else {
+		response.sendFile(path.resolve('index.html'));
+	}
 });
 
 app.get('/callback', async (request,response) => {
@@ -98,7 +110,16 @@ app.get('/callback', async (request,response) => {
 			throw error;
 		}
 		request.session.userId = userData.id;
-		response.redirect('/dashboard');
+		
+		// Check if user is new (hasn't set up their preferences)
+		// A user is considered new if annoy_time is not set (most reliable indicator)
+		const isNewUser = !userData.annoy_time;
+		
+		if (isNewUser) {
+			response.redirect('/onboarding');
+		} else {
+			response.redirect('/dashboard');
+		}
 	} catch (error) {
 		console.error("Error duting token exchange: ", error);
 		response.status(500).send("Error: Authentication failed");
@@ -123,6 +144,15 @@ app.get('/api/me', async (request,response) => {
 	}
 });
 
+app.get('/onboarding', (request, response) => {
+	if (request.session.userId) {
+		response.sendFile(path.resolve('onboarding.html'));
+	}
+	else {
+		response.redirect('/');
+	}
+});
+
 app.get('/dashboard', (request, response) => {
 	if (request.session.userId) {
 		response.sendFile(path.resolve('dashboard.html'));
@@ -134,6 +164,133 @@ app.get('/dashboard', (request, response) => {
 
 app.get('/config', (request,response) => {
 	response.json({client_id: process.env.GITHUB_CLIENT_ID});
+});
+
+app.post('/api/signout', (request, response) => {
+	request.session.destroy((err) => {
+		if (err) {
+			console.error('Error destroying session:', err);
+			return response.status(500).json({"error": "Failed to sign out"});
+		}
+		// Clear the session cookie with same settings as session
+		response.clearCookie('callmeout.sid', {
+			httpOnly: true,
+			secure: process.env.NODE_ENV === 'production',
+			sameSite: 'lax'
+		});
+		response.json({"message": "Signed out successfully"});
+	});
+});
+
+app.post('/api/onboarding', async (request, response) => {
+	if (!request.session.userId) {
+		return response.status(401).json({"error": "401 Unauthorized"});
+	}
+
+	try {
+		const { push_goal, annoy_time, discord_webhook_url } = request.body;
+
+		// Validate push_goal
+		if (!push_goal || push_goal < 1) {
+			return response.status(400).json({"error": "push_goal must be a positive integer"});
+		}
+
+		// Validate annoy_time format (HH:MM)
+		if (!annoy_time) {
+			return response.status(400).json({"error": "annoy_time is required"});
+		}
+		const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+		if (!timeRegex.test(annoy_time)) {
+			return response.status(400).json({"error": "annoy_time must be in HH:MM format (24-hour)"});
+		}
+
+		// Validate discord_webhook_url (if provided, must be a valid URL)
+		if (discord_webhook_url !== null && discord_webhook_url !== undefined && discord_webhook_url !== '') {
+			try {
+				new URL(discord_webhook_url);
+			} catch (e) {
+				return response.status(400).json({"error": "discord_webhook_url must be a valid URL"});
+			}
+		}
+
+		// Update user settings
+		const updateData = {
+			push_goal: parseInt(push_goal, 10),
+			annoy_time: annoy_time,
+			discord_webhook_url: discord_webhook_url || null
+		};
+
+		const { data: updatedData, error: updateError } = await supabase
+			.from('users')
+			.update(updateData)
+			.eq('id', request.session.userId)
+			.select()
+			.single();
+
+		if (updateError) {
+			console.error('Error updating user settings:', updateError);
+			return response.status(500).json({"error": "Failed to save settings"});
+		}
+
+		response.json({
+			"message": "Onboarding completed successfully",
+			"data": {
+				push_goal: updatedData.push_goal,
+				annoy_time: updatedData.annoy_time,
+				discord_webhook_url: updatedData.discord_webhook_url
+			}
+		});
+	} catch (error) {
+		console.error('Error in onboarding endpoint:', error);
+		response.status(500).json({"error": "Internal server error"});
+	}
+});
+
+app.post('/api/test-webhook', async (request, response) => {
+	if (!request.session.userId) {
+		return response.status(401).json({"error": "401 Unauthorized"});
+	}
+
+	try {
+		// Get user's Discord webhook URL
+		const { data: userData, error: userError } = await supabase
+			.from('users')
+			.select('discord_webhook_url, github_username')
+			.eq('id', request.session.userId)
+			.single();
+
+		if (userError) {
+			console.error('Error fetching user data:', userError);
+			return response.status(500).json({"error": "Database error"});
+		}
+
+		if (!userData.discord_webhook_url) {
+			return response.status(400).json({"error": "No Discord webhook URL configured. Please add one in settings."});
+		}
+
+		// Send test message to Discord
+		const testMessage = `**Test Notification**\n\nHello ${userData.github_username}! This is a test message from your callmeout app. If you see this, your Discord webhook is working correctly! 🎉`;
+
+		try {
+			await axios.post(userData.discord_webhook_url, {
+				content: testMessage
+			});
+
+			response.json({
+				"message": "Test notification sent successfully! Check your Discord channel.",
+				"success": true
+			});
+		} catch (discordError) {
+			console.error('Error sending Discord webhook:', discordError);
+			return response.status(500).json({
+				"error": "Failed to send notification to Discord. Please check your webhook URL.",
+				"details": discordError.message
+			});
+		}
+	} catch (error) {
+		console.error('Error in test webhook endpoint:', error);
+		response.status(500).json({"error": "Internal server error"});
+	}
 });
 
 app.post('/api/settings', async (request, response) => {
