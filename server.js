@@ -14,6 +14,9 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Trust proxy (important for Render and other hosting services)
+app.set('trust proxy', 1);
+
 // Serve static files - use __dirname for Vercel compatibility
 app.use(express.static(__dirname));
 
@@ -27,8 +30,8 @@ const supabase = createClient(
 	process.env.SUPABASE_ANON_KEY || ''
 );
 
-// Session configuration - Note: In-memory sessions won't persist across serverless invocations
-// For production, you'll need Redis or another session store
+// Session configuration
+// For Render: Use in-memory sessions (works fine since it's a persistent server, not serverless)
 app.use(session({
 	secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
 	resave: false,
@@ -37,8 +40,11 @@ app.use(session({
 	cookie: {
 		maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
 		httpOnly: true,
-		secure: process.env.NODE_ENV === 'production',
-		sameSite: 'lax'
+		// Only use secure cookies if explicitly on HTTPS (Render uses HTTPS by default)
+		secure: process.env.FORCE_SECURE_COOKIES === 'true',
+		sameSite: 'lax',
+		// Ensure cookie works across subdomains if needed
+		domain: undefined // Let browser handle domain automatically
 	}
 }));
 
@@ -130,15 +136,23 @@ app.get('/callback', async (request,response) => {
 		}
 		request.session.userId = userData.id;
 		
-		// Check if user is new (hasn't set up their preferences)
-		// A user is considered new if annoy_time is not set (most reliable indicator)
-		const isNewUser = !userData.annoy_time;
-		
-		if (isNewUser) {
-			response.redirect('/onboarding');
-		} else {
-			response.redirect('/dashboard');
-		}
+		// Save session before redirect
+		request.session.save((err) => {
+			if (err) {
+				console.error('Error saving session:', err);
+				return response.status(500).send("Error: Failed to save session");
+			}
+			
+			// Check if user is new (hasn't set up their preferences)
+			// A user is considered new if annoy_time is not set (most reliable indicator)
+			const isNewUser = !userData.annoy_time;
+			
+			if (isNewUser) {
+				response.redirect('/onboarding');
+			} else {
+				response.redirect('/dashboard');
+			}
+		});
 	} catch (error) {
 		console.error("Error duting token exchange: ", error);
 		response.status(500).send("Error: Authentication failed");

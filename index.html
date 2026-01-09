@@ -17,18 +17,22 @@
 				const githubLogin = document.getElementById('github-login');
 
 				// Check if user is already logged in
-				fetch('/api/me')
+				fetch('/api/me', {
+					credentials: 'include' // Important: Include cookies in the request
+				})
 					.then(response => {
 						if (response.ok) {
 							// User is logged in, redirect to dashboard
 							window.location.href = '/dashboard';
-							return;
+							return null;
 						}
-						// User is not logged in, show login button
-						return fetch('/config');
+						// User is not logged in (401 is expected), show login button
+						return fetch('/config', {
+							credentials: 'include'
+						});
 					})
 					.then(response => {
-						if (!response) return; // Already redirected
+						if (!response) return null; // Already redirected
 						return response.json();
 					})
 					.then(config => {
