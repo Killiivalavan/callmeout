@@ -7,15 +7,31 @@
     <link href="style.css" rel="stylesheet">
 </head>
 <body>
-    <h1>My Dashboard</h1>
-    <pre id="user-data-placeholder"></pre>
-	<div class="graph-grid">Git pushes</div>
+    <div class="settings-container">
+        <button id="settings-btn" class="settings-button">⚙️</button>
+        <div id="settings-dropdown" class="dropdown-content">
+            <label for="goal-input">Daily Push Goal:</label>
+            <input type="number" id="goal-input" min="1">
+			<label for="annoy-time-input">Annoy after</label>
+			<input type="time" id="annoy-time-input">
+			<label for="discord-url">Discord Webhook URL</label>
+			<input type="url" id="discord-url">
+			<button id="save-goal-btn">Save</button>
+        </div>
+    </div>
+
+	<h1 id="welcome-text"></h1>
+    <p id="push-goal"></p>
+	<div class="graph-grid"></div>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {
-            const userDataElement = document.getElementById('user-data-placeholder');
+            const pushGoalElement = document.getElementById('push-goal');
+			const dashboardIntroElement = document.getElementById('welcome-text')
 			const graphGrid = document.querySelector('.graph-grid');
-
+			const pushGoal = document.getElementById('goal-input');
+			const annoyTime = document.getElementById('annoy-time-input');
+			const discWebhook = document.getElementById('discord-url');
             fetch('/api/me')
                 .then(response => {
                     if (!response.ok) {
@@ -26,15 +42,16 @@
                     return response.json();
                 })
                 .then(data => {
-                    // Display the user data in the <pre> tag as formatted JSON
-                    userDataElement.textContent = JSON.stringify(data, null, 2);
-
-
+					pushGoalElement.textContent = `Your daily push goal is ${data.push_goal} time(s)`
+					dashboardIntroElement.textContent = `Hello, ${data.github_username}!`
+					annoyTime.value = `${data.annoy_time}`
+					discWebhook.value = `${data.discord_webhook_url}`
 					const gitData = new Map();
 					for (const record of data.github_counter) {
 						gitData.set(record.date, record.push_counter);
 					};
 					const today = new Date();
+					const squares = [];
 					for (let i = 0; i<365; i++) {
 						const dateString = today.toISOString().split('T')[0];
 						const count = gitData.get(dateString) || 0;
@@ -51,15 +68,37 @@
 							level = 4;
 						}
 						square.classList.add(`level-${level}`);
-						graphGrid.appendChild(square);
+						squares.push(square);
 						today.setDate(today.getDate() - 1);
 					}
-
+					for (let i = squares.length - 1; i >= 0; i--) {
+						graphGrid.appendChild(squares[i]);
+					}
                 })
                 .catch(error => {
                     // This catch block will handle the "Not authenticated" error gracefully
                     console.error('Error fetching data:', error);
                 });
+			
+            const settingsBtn = document.getElementById('settings-btn');
+            const dropdown = document.getElementById('settings-dropdown');
+			const saveBtn = document.getElementById('save-goal-btn');
+            // Start with the dropdown hidden
+            dropdown.style.display = 'none';
+            settingsBtn.addEventListener('click', () => {
+              if (dropdown.style.display === 'none') {
+                dropdown.style.display = 'flex';
+              } else {
+                dropdown.style.display = 'none';
+              }
+            });
+			saveBtn.addEventListener('click', () => {
+				console.log('save clicked');
+				const newPushGoal = pushGoal.value;
+				const newAnnoyTime = annoyTime.value;
+				const newDiscWebhook = discWebhook.value;
+			})
+
         });
     </script>
 </body>

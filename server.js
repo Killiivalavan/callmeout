@@ -5,6 +5,7 @@ import {createClient} from "@supabase/supabase-js";
 import session from "express-session";
 import path from 'path';
 import crypto from "crypto";
+import cron from 'node-cron';
 
 const app = express();
 app.use(express.static('.'));
@@ -35,7 +36,6 @@ app.get('/callback', async (request,response) => {
 		});
 		const accessToken = githubResponse.data.access_token;
 		const authDetailsUrl = 'https://api.github.com/user'
-
 		const authenticatedResponse = await axios.get(authDetailsUrl, {
 			headers: {
 				'Accept': 'application/json',
@@ -69,7 +69,7 @@ app.get('/api/me', async (request,response) => {
 	if (request.session.userId) {
 		const {data: meData,error: userDataError} = await supabase
 			.from('users')
-			.select(`github_id, github_username, push_goal, github_counter(date, push_counter)`)
+			.select(`github_id, github_username, push_goal, annoy_time, discord_webhook_url, github_counter(date, push_counter)`)
 			.eq('id', request.session.userId)
 			.single();
 		if (userDataError) {
@@ -130,6 +130,43 @@ app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (requ
 
 app.get('/config', (request,response) => {
 	response.json({client_id: process.env.GITHUB_CLIENT_ID});
+});
+
+cron.schedule('*/5 * * * *', async () => {
+	const today = new Date().toISOString().split('T')[0];
+	const now = new Date().toLocaleTimeString('en-US', {hour12: false});
+	console.log('Running cron job to check push goals...');
+	const {data:userCronCheck, error} = await supabase
+		.from('github_counter')
+		.select(`id, push_counter, users(push_goal, discord_webhook_url, annoy_time)`)
+		.eq('date', today)
+		.eq('is_job_done', false);
+	if (error) {
+		console.error('Cron job failed to fetch users', error);
+		return;
+	};
+	if (!userCronCheck || userCronCheck.length == 0) {
+		console.log('No users to check. Cron Job completed');
+		return;
+	};
+	console.log(`Found ${userCronCheck.length} user(s) to check`);
+	for (let item of userCronCheck) {
+		if (item.push_counter >= item.users.push_goal) {
+			await supabase 
+				.from('github_counter')
+				.update({is_job_done: true})
+				.eq('id', item.id);
+			await axios.post(item.users.discord_webhook_url, {
+				content: 'Congratulations! You have acheived your *git push* goal for today'
+			});
+		} else {
+			if (now >= item.users.annoy_time) {
+				await axios.post(item.users.discord_webhook_url, {
+					content: 'push kar bc'
+				});
+			};
+		}
+	}
 });
 
 app.listen(6900, ()=> {
