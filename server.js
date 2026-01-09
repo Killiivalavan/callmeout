@@ -4,22 +4,41 @@ import "dotenv/config";
 import {createClient} from "@supabase/supabase-js";
 import session from "express-session";
 import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from "crypto";
 import cron from 'node-cron';
 
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
-app.use(express.static('.'));
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+
+// Serve static files - use __dirname for Vercel compatibility
+app.use(express.static(__dirname));
+
+// Validate required environment variables
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+	console.error('Missing required Supabase environment variables');
+}
+
+const supabase = createClient(
+	process.env.SUPABASE_URL || '', 
+	process.env.SUPABASE_ANON_KEY || ''
+);
+
+// Session configuration - Note: In-memory sessions won't persist across serverless invocations
+// For production, you'll need Redis or another session store
 app.use(session({
-	secret: process.env.SESSION_SECRET,
+	secret: process.env.SESSION_SECRET || 'fallback-secret-change-in-production',
 	resave: false,
 	saveUninitialized: false,
-	name: 'callmeout.sid', // Custom session cookie name
+	name: 'callmeout.sid',
 	cookie: {
 		maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
-		httpOnly: true, // Prevents client-side JavaScript from accessing the cookie
-		secure: process.env.NODE_ENV === 'production', // Only send over HTTPS in production
-		sameSite: 'lax' // CSRF protection
+		httpOnly: true,
+		secure: process.env.NODE_ENV === 'production',
+		sameSite: 'lax'
 	}
 }));
 
@@ -68,7 +87,7 @@ app.get('/', (request, response) => {
 	if (request.session.userId) {
 		response.redirect('/dashboard');
 	} else {
-		response.sendFile(path.resolve('index.html'));
+		response.sendFile(path.join(__dirname, 'index.html'));
 	}
 });
 
@@ -146,7 +165,7 @@ app.get('/api/me', async (request,response) => {
 
 app.get('/onboarding', (request, response) => {
 	if (request.session.userId) {
-		response.sendFile(path.resolve('onboarding.html'));
+		response.sendFile(path.join(__dirname, 'onboarding.html'));
 	}
 	else {
 		response.redirect('/');
@@ -155,7 +174,7 @@ app.get('/onboarding', (request, response) => {
 
 app.get('/dashboard', (request, response) => {
 	if (request.session.userId) {
-		response.sendFile(path.resolve('dashboard.html'));
+		response.sendFile(path.join(__dirname, 'dashboard.html'));
 	}
 	else {
 		response.redirect('/');
@@ -370,7 +389,8 @@ app.post('/api/settings', async (request, response) => {
 	}
 });
 
-cron.schedule('*/5 * * * *', async () => {
+// Cron job function (can be called by Vercel Cron Jobs or node-cron locally)
+async function checkPushGoals() {
 	const today = new Date().toISOString().split('T')[0];
 	const now = new Date().toLocaleTimeString('en-US', {hour12: false});
 	console.log('Running cron job to check push goals...');
@@ -405,9 +425,38 @@ cron.schedule('*/5 * * * *', async () => {
 			};
 		}
 	}
+}
+
+// API endpoint for Vercel Cron Jobs
+app.get('/api/cron', async (request, response) => {
+	// Optional: Add authentication to prevent unauthorized access
+	const cronSecret = request.headers['x-cron-secret'] || request.query.secret;
+	if (process.env.CRON_SECRET && cronSecret !== process.env.CRON_SECRET) {
+		return response.status(401).json({"error": "Unauthorized"});
+	}
+	
+	try {
+		await checkPushGoals();
+		response.json({"message": "Cron job executed successfully"});
+	} catch (error) {
+		console.error('Cron job error:', error);
+		response.status(500).json({"error": "Cron job failed"});
+	}
 });
 
-app.listen(6900, ()=> {
-	console.log('Server is active on port 6900');
-});
+// Only use node-cron when running locally (not on Vercel)
+if (process.env.VERCEL !== '1') {
+	cron.schedule('*/5 * * * *', checkPushGoals);
+}
+
+// Export for Vercel serverless functions
+export default app;
+
+// Only start server if running locally (not on Vercel)
+if (process.env.VERCEL !== '1') {
+	const PORT = process.env.PORT || 6900;
+	app.listen(PORT, () => {
+		console.log(`Server is active on port ${PORT}`);
+	});
+}
 
