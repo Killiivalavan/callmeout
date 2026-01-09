@@ -15,6 +15,45 @@ app.use(session({
 	resave: false,
 	saveUninitialized: false
 }));
+
+// Webhook route must be defined BEFORE express.json() to get raw body
+app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (request, response) => {
+	const githubSignature = request.get('X-Hub-Signature-256');
+	const gitWebhookSecret = process.env.GITWEBHOOK_SECRET;
+	const hmac = crypto.createHmac('sha256', gitWebhookSecret);
+	hmac.update(request.body);
+	const ourSignature = 'sha256=' + hmac.digest('hex');
+	if (!crypto.timingSafeEqual(Buffer.from(ourSignature), Buffer.from(githubSignature))) {
+		console.warn('Recieved webhook with invalid signature');
+		return response.status(401).send("Invalid Signature");		
+	};
+	console.log('Webhook Signature verified successfully');
+	const pushEvent = JSON.parse(request.body.toString());
+	console.log('--- RECEIVED GITHUB PAYLOAD ---');
+    console.log(JSON.stringify(pushEvent, null, 2));
+    console.log('--- END OF PAYLOAD ---');
+	const {data:pushData, error:userError} = await supabase
+		.from('users')
+		.select('id')
+		.eq('github_id', pushEvent.sender.id)
+		.single();
+	if (!pushData || userError) {
+		console.error('Unable to locate user webhook:', userError);
+		return response.status(404).send('User not Found');
+	}
+	const {error:counterUpsertError} = await supabase.rpc('increment_push_counter', {
+		user_id_in: pushData.id
+	});
+	if (counterUpsertError) {
+			console.error('Unable to upsert data:', counterUpsertError);
+			return response.status(500).send("Data not updated")
+	}
+	else {
+		return response.status(200).send('Webhook recieved successfully')
+	};
+});
+
+// JSON parsing middleware for other routes
 app.use(express.json());
 
 app.get('/', (request, response) => {
@@ -91,42 +130,6 @@ app.get('/dashboard', (request, response) => {
 	else {
 		response.redirect('/');
 	}
-});
-
-app.post('/api/gitwebhook', express.raw({type: 'application/json'}), async (request, response) => {
-	const githubSignature = request.get('X-Hub-Signature-256');
-	const gitWebhookSecret = process.env.GITWEBHOOK_SECRET;
-	const hmac = crypto.createHmac('sha256', gitWebhookSecret);
-	hmac.update(request.body);
-	const ourSignature = 'sha256=' + hmac.digest('hex');
-	if (!crypto.timingSafeEqual(Buffer.from(ourSignature), Buffer.from(githubSignature))) {
-		console.warn('Recieved webhook with invalid signature');
-		return response.status(401).send("Invalid Signature");		
-	};
-	console.log('Webhook Signature verified successfully');
-	const pushEvent = JSON.parse(request.body.toString());
-	console.log('--- RECEIVED GITHUB PAYLOAD ---');
-    console.log(JSON.stringify(pushEvent, null, 2));
-    console.log('--- END OF PAYLOAD ---');
-	const {data:pushData, error:userError} = await supabase
-		.from('users')
-		.select('id')
-		.eq('github_id', pushEvent.sender.id)
-		.single();
-	if (!pushData || userError) {
-		console.error('Unable to locate user webhook:', userError);
-		return response.status(404).send('User not Found');
-	}
-	const {error:counterUpsertError} = await supabase.rpc('increment_push_counter', {
-		user_id_in: pushData.id
-	});
-	if (counterUpsertError) {
-			console.error('Unable to upsert data:', counterUpsertError);
-			return response.status(500).send("Data not updated")
-	}
-	else {
-		return response.status(200).send('Webhook recieved successfully')
-	};
 });
 
 app.get('/config', (request,response) => {
