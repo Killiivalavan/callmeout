@@ -18,6 +18,7 @@ const app = express();
 app.set('trust proxy', 1);
 
 // Serve static files - use __dirname for Vercel compatibility
+// On Vercel, static files are served via vercel.json routes, but this handles local development
 app.use(express.static(__dirname));
 
 // Validate required environment variables
