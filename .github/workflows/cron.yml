@@ -4,7 +4,7 @@ on:
   schedule:
     # Run every 5 minutes
     - cron: '*/5 * * * *'
-  workflow_dispatch: # Allows manual triggering
+  workflow_dispatch: # Allows manual triggering from GitHub UI
 
 jobs:
   check-push-goals:
@@ -12,7 +12,18 @@ jobs:
     steps:
       - name: Call Cron Endpoint
         run: |
-          curl -X GET "${{ secrets.VERCEL_URL }}/api/cron?secret=${{ secrets.CRON_SECRET }}"
+          response=$(curl -s -w "\n%{http_code}" -X GET "${{ secrets.VERCEL_URL }}/api/cron?secret=${{ secrets.CRON_SECRET }}")
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          if [ "$http_code" -eq 200 ]; then
+            echo "✅ Cron job executed successfully"
+            echo "$body"
+          else
+            echo "❌ Cron job failed with HTTP $http_code"
+            echo "$body"
+            exit 1
+          fi
         env:
           VERCEL_URL: ${{ secrets.VERCEL_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

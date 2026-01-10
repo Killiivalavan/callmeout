@@ -16,12 +16,6 @@
       "dest": "/server.js"
     }
   ],
-  "crons": [
-    {
-      "path": "/api/cron",
-      "schedule": "*/5 * * * *"
-    }
-  ],
   "env": {
     "NODE_ENV": "production"
   }
