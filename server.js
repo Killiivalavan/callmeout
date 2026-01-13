@@ -407,39 +407,50 @@ app.post('/api/settings', async (request, response) => {
 // Cron job function (can be called by Vercel Cron Jobs or node-cron locally)
 async function checkPushGoals() {
 	const today = new Date().toISOString().split('T')[0];
-	const now = new Date().toLocaleTimeString('en-US', {hour12: false});
-	console.log('Running cron job to check push goals...');
-	const {data:userCronCheck, error} = await supabase
-		.from('github_counter')
-		.select(`id, push_counter, users(push_goal, discord_webhook_url, annoy_time)`)
-		.eq('date', today)
-		.eq('is_job_done', false);
-	if (error) {
-		console.error('Cron job failed to fetch users', error);
+	const now = new Date().toTimeString().slice(0, 5); // "HH:MM" format
+	console.log(`Running cron job at ${now}...`);
+
+	// Get ALL users whose notification time has passed (not just those who pushed)
+	const {data: users, error: usersError} = await supabase
+		.from('users')
+		.select('id, push_goal, discord_webhook_url, annoy_time')
+		.not('discord_webhook_url', 'is', null)
+		.not('annoy_time', 'is', null)
+		.lte('annoy_time', now);
+
+	if (usersError || !users?.length) {
+		console.log(usersError ? `Error: ${usersError.message}` : 'No users to notify at this time');
 		return;
-	};
-	if (!userCronCheck || userCronCheck.length == 0) {
-		console.log('No users to check. Cron Job completed');
-		return;
-	};
-	console.log(`Found ${userCronCheck.length} user(s) to check`);
-	for (let item of userCronCheck) {
-		if (item.push_counter >= item.users.push_goal) {
-			await supabase 
-				.from('github_counter')
-				.update({is_job_done: true})
-				.eq('id', item.id);
-			await axios.post(item.users.discord_webhook_url, {
-				content: 'Congratulations! You have acheived your *git push* goal for today'
-			});
-		} else {
-			if (now >= item.users.annoy_time) {
-				await axios.post(item.users.discord_webhook_url, {
-					content: 'push kar bc'
-				});
-			};
-		}
 	}
+
+	// Get today's push counters for these users
+	const {data: counters} = await supabase
+		.from('github_counter')
+		.select('id, user_id, push_counter, is_job_done')
+		.eq('date', today)
+		.in('user_id', users.map(u => u.id));
+
+	const counterMap = new Map(counters?.map(c => [c.user_id, c]));
+	console.log(`Checking ${users.length} user(s)...`);
+
+	for (const user of users) {
+		const counter = counterMap.get(user.id);
+		if (counter?.is_job_done) continue; // Already notified today
+
+		const pushCount = counter?.push_counter || 0;
+		const goalMet = pushCount >= user.push_goal;
+
+		if (goalMet && counter) {
+			await supabase.from('github_counter').update({is_job_done: true}).eq('id', counter.id);
+		}
+
+		await axios.post(user.discord_webhook_url, {
+			content: goalMet 
+				? 'Congratulations! You have achieved your *git push* goal for today 🎉' 
+				: 'push kar bc'
+		});
+	}
+	console.log('Cron job completed');
 }
 
 // API endpoint for Vercel Cron Jobs
