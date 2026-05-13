@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dashboard</title>
     <link rel="icon" type="image/png" href="/favicon.png">
-    <link href="style.css" rel="stylesheet">
+    <link href="/styles/main.css" rel="stylesheet">
 </head>
 <body>
     <div class="settings-container">
@@ -13,8 +13,8 @@
         <div id="settings-dropdown" class="dropdown-content">
             <label for="goal-input">Daily Push Goal:</label>
             <input type="number" id="goal-input" min="1">
-            <label for="annoy-time-input">Annoy After</label>
-            <input type="time" id="annoy-time-input">
+            <label for="annoy-time-input">Annoy After (HH:MM)</label>
+            <input type="text" id="annoy-time-input" pattern="([01]\d|2[0-3]):([0-5]\d)" placeholder="e.g. 19:00">
             <label for="discord-url">Discord Webhook URL</label>
             <input type="url" id="discord-url">
             <label for="timezone-input">Timezone:</label>

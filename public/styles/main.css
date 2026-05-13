@@ -117,148 +117,91 @@ ul {
 	background-color: #2c974b;
 }
 
-/* --- Settings Menu --- */
+/* callmeout - UI Polish & Settings Improvements */
+
+/* === Settings Button Upgrade === */
 .settings-container {
-	position: absolute;
-	top: 20px;
-	right: 20px;
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
 
 .settings-button {
-	background: rgba(30, 30, 40, 0.8);
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 10px;
-	width: 44px;
-	height: 44px;
-	font-size: 22px;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	cursor: pointer;
-	color: #8b949e;
-	backdrop-filter: blur(8px);
-	-webkit-backdrop-filter: blur(8px);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-	transition: all 0.2s ease;
+  background: rgba(139, 148, 158, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  color: #e6edf3;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .settings-button:hover {
-	background: rgba(40, 40, 50, 0.95);
-	border-color: rgba(255, 255, 255, 0.15);
-	color: #e6edf3;
-	transform: scale(1.08);
+  background: rgba(139, 148, 158, 0.3);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
 }
 
 .settings-button:active {
-	transform: scale(0.96);
+  transform: scale(0.97);
 }
 
-/* Dropdown Panel */
+/* === Dropdown Card Upgrade === */
 .dropdown-content {
-	position: absolute;
-	top: 52px;
-	right: 0;
-	width: 300px;
-	max-height: calc(100vh - 80px);
-	overflow-y: auto;
-	background: rgba(22, 26, 30, 0.95);
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	border-radius: 14px;
-	padding: 18px;
-	box-shadow: 0 16px 50px rgba(0, 0, 0, 0.4);
-	z-index: 10;
-	flex-direction: column;
-	gap: 10px;
-	backdrop-filter: blur(20px);
-	-webkit-backdrop-filter: blur(20px);
-	scrollbar-width: thin;
-	scrollbar-color: #333 #1a1a1a;
-}
-
-.dropdown-content::-webkit-scrollbar {
-	width: 6px;
-}
-
-.dropdown-content::-webkit-scrollbar-thumb {
-	background: #333;
-	border-radius: 3px;
+  position: absolute;
+  top: 56px;
+  right: 0;
+  width: 280px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+  background: rgba(22, 26, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  z-index: 10;
+  flex-direction: column;
+  gap: 14px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .dropdown-content label {
-	color: #8b949e;
-	font-size: 11px;
-	font-weight: 600;
-	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	display: block;
-	margin-bottom: 4px;
+  color: #8b949e;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  display: block;
+  margin-bottom: 6px;
 }
 
 .dropdown-content input,
 .dropdown-content select {
-	width: 100%;
-	padding: 8px 12px;
-	background-color: #0d1117;
-	border: 1px solid rgba(255, 255, 255, 0.08);
-	border-radius: 8px;
-	color: #e6edf3;
-	font-size: 13px;
-	box-sizing: border-box;
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #e6edf3;
+  font-size: 13px;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dropdown-content input:focus,
 .dropdown-content select:focus {
-	outline: none;
-	border-color: #2ea44f;
-	box-shadow: 0 0 0 3px rgba(46, 164, 79, 0.2);
-}
-
-/* Dropdown buttons */
-.dropdown-content button {
-	background-color: #2ea44f;
-	color: #fff;
-	border: none;
-	padding: 10px 16px;
-	border-radius: 8px;
-	font-weight: 600;
-	font-size: 13px;
-	cursor: pointer;
-	transition: all 0.18s ease;
-	width: 100%;
-	margin-top: 6px;
-}
-
-.dropdown-content button:hover:not(:disabled) {
-	background-color: #2c974b;
-	transform: translateY(-1px);
-	box-shadow: 0 4px 12px rgba(46, 164, 79, 0.3);
-}
-
-.dropdown-content button:active:not(:disabled) {
-	transform: translateY(0);
-}
-
-.dropdown-content button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
-/* Secondary button style */
-.btn-secondary {
-	background-color: #5865F2 !important;
-}
-
-.btn-secondary:hover:not(:disabled) {
-	background-color: #4a5be0 !important;
-	box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3) !important;
-}
-
-/* Divider */
-.dropdown-divider {
-	border: none;
-	border-top: 1px solid rgba(255, 255, 255, 0.06);
-	margin: 10px 0;
+  outline: none;
+  border-color: #2ea44f;
+  box-shadow: 0 0 0 3px rgba(46, 164, 79, 0.2);
 }
 
 /* Settings Message */
@@ -283,29 +226,83 @@ ul {
 	border: 1px solid rgba(248, 81, 73, 0.2);
 }
 
-/* --- Sign Out Button --- */
+/* === Button Groups === */
+.dropdown-content button {
+  background-color: #2ea44f;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.dropdown-content button:hover:not(:disabled) {
+  background-color: #2c974b;
+  transform: translateY(-1px);
+}
+
+.dropdown-content button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.dropdown-content button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* === Secondary Button Style === */
+.btn-secondary {
+  background-color: #3c45a5 !important;
+  color: #fff;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #4a54c6 !important;
+}
+
+/* === Sign Out Button === */
 .dropdown-content .signout-button,
 .signout-button {
-	background-color: rgba(248, 81, 73, 0.15) !important;
-	color: #f85149;
-	border: 1px solid rgba(248, 81, 73, 0.25) !important;
-	padding: 10px 16px;
-	border-radius: 8px;
-	font-weight: 600;
-	font-size: 13px;
-	cursor: pointer;
-	transition: all 0.18s ease;
-	width: 100%;
-	margin-top: 6px;
+  background-color: #f85149 !important;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .dropdown-content .signout-button:hover,
 .signout-button:hover {
-	background-color: rgba(248, 81, 73, 0.25) !important;
-	color: #fff;
-	border-color: rgba(248, 81, 73, 0.5) !important;
-	transform: translateY(-1px);
+  background-color: #da3633 !important;
+  opacity: 0.85;
+  transform: translateY(-1px);
 }
+
+/* === Section Divider === */
+.dropdown-divider {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 12px 0;
+}
+
 
 /* --- Onboarding Form Styles --- */
 .onboarding-container {

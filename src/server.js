@@ -19,7 +19,7 @@ app.set('trust proxy', 1);
 
 // Serve static files from public folder (Vercel serves this automatically)
 // This is for local development - Vercel serves /public automatically
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Cookie parser for reading cookies
 app.use(cookieParser());
@@ -198,7 +198,7 @@ app.get('/', (request, response) => {
 	if (request.userId) {
 		response.redirect('/dashboard');
 	} else {
-		response.sendFile(path.join(__dirname, 'index.html'));
+		response.sendFile(path.join(__dirname, 'views', 'index.html'));
 	}
 });
 
@@ -277,7 +277,7 @@ app.get('/api/me', authenticateToken, async (request, response) => {
 
 app.get('/onboarding', optionalAuth, (request, response) => {
 	if (request.userId) {
-		response.sendFile(path.join(__dirname, 'onboarding.html'));
+		response.sendFile(path.join(__dirname, 'views', 'onboarding.html'));
 	}
 	else {
 		response.redirect('/');
@@ -286,7 +286,7 @@ app.get('/onboarding', optionalAuth, (request, response) => {
 
 app.get('/dashboard', optionalAuth, (request, response) => {
 	if (request.userId) {
-		response.sendFile(path.join(__dirname, 'dashboard.html'));
+		response.sendFile(path.join(__dirname, 'views', 'dashboard.html'));
 	}
 	else {
 		response.redirect('/');
