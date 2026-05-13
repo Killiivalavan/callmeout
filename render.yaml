@@ -11,8 +11,9 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
-      - key: SESSION_SECRET
+      - key: JWT_SECRET
         generateValue: true
+        # NOTE: Used for signing JWT access/refresh tokens (formerly SESSION_SECRET)
       - key: GITHUB_CLIENT_ID
         sync: false
       - key: GITHUB_CLIENT_SECRET
